@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling", "transformers", "torch", "safetensors", "protobuf"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llm-layer-collector"
+version = "0.0.1"
+authors = [{name="Erin Clemmer", email="erin.c.clemmer@gmail.com"}]
+description = "A tool for loading and computing on parts of LLM models."
+keywords = ["llm", "transformers", "torch", "safetensors"]
+license = "MIT"
+readme = "README.md"
+license-files = ["LICENSE"]
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed"
+]
+requires-python = ">=3.10"
+dependencies = [
+    "transformers",
+    "torch",
+    "safetensors",
+    "tqdm",
+    "protobuf"
+]
+
+[project.urls]
+Homepage = "https://github.com/erinclemmer/llm-layer-collector"
+Issues = "https://github.com/erinclemmer/llm-layer-collector/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/llm_layer_collector"]
