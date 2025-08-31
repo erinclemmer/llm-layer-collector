@@ -4,7 +4,6 @@ from transformers.cache_utils import Cache
 
 class LLmComputationState:
     state: torch.Tensor
-    attention_mask: torch.Tensor
     position_embeddings: Optional[torch.Tensor]
     position_embeddings_local: Optional[torch.Tensor]
     position_embeddings_global: Optional[torch.Tensor]
@@ -18,7 +17,6 @@ class LLmComputationState:
         self.position_embeddings = None
         self.position_embeddings_local = None
         self.position_embeddings_gloabl = None
-        self.attention_mask = None
         self.position_ids = None
         self.cache_position = None
         self.causal_mask = { }

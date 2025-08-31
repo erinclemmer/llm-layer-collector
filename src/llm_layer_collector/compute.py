@@ -34,7 +34,7 @@ def compute_embedding(
     mask_kwargs = {
         "config": config,
         "input_embeds": embedded_input.detach(),
-        "attention_mask": state.attention_mask,
+        "attention_mask": None,
         "cache_position": state.cache_position,
         "past_key_values": state.past_key_values,
         "position_ids": state.position_ids
