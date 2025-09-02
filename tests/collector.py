@@ -109,6 +109,7 @@ class LlmLayerCollectorTests(unittest.TestCase):
         collector = LlmLayerCollector(MODEL_DIR_1B, CACHE_FILE_1B)
         norm = collector.load_norm()
         norm = norm.to('cpu')
+        norm = norm.to(dtype=torch.float16)
         self.assertEqual(norm.weight.shape, (2048,))
     
     def test_norm_8B(self):
