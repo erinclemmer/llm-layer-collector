@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llm-layer-collector"
-version = "0.0.1"
+version = "0.0.2"
 authors = [{name="Erin Clemmer", email="erin.c.clemmer@gmail.com"}]
 description = "A tool for loading and computing on parts of LLM models."
 keywords = ["llm", "transformers", "torch", "safetensors"]

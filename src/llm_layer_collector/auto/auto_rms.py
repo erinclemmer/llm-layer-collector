@@ -21,3 +21,7 @@ class AutoRMSNorm:
 
     def __call__(self, hidden_states: torch.Tensor) -> torch.Tensor:
         return self.cls(hidden_states).to(hidden_states.dtype)
+
+    def to(self, device: str) -> 'AutoRMSNorm':
+        self.cls = self.cls.to(device)
+        return self

@@ -108,6 +108,7 @@ class LlmLayerCollectorTests(unittest.TestCase):
     def test_norm_1B(self):
         collector = LlmLayerCollector(MODEL_DIR_1B, CACHE_FILE_1B)
         norm = collector.load_norm()
+        norm = norm.to('cpu')
         self.assertEqual(norm.weight.shape, (2048,))
     
     def test_norm_8B(self):
