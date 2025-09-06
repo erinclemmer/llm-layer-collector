@@ -40,6 +40,7 @@ class AutoDecoderLayer:
             "attention_mask": state.causal_mask[attention_type],
             "position_ids": state.position_ids,
             "past_key_values": state.past_key_values,
+            "past_key_value": state.past_key_values,
             "use_cache": self.config.use_cache,
             "cache_position": state.cache_position,
         }
