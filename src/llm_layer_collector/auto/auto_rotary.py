@@ -5,6 +5,7 @@ from transformers.configuration_utils import PretrainedConfig
 from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
 from transformers.models.qwen3.modeling_qwen3 import Qwen3RotaryEmbedding
 from transformers.models.gemma3.modeling_gemma3 import Gemma3RotaryEmbedding
+from transformers.models.qwen3_moe.modeling_qwen3_moe import Qwen3MoeRotaryEmbedding
 
 mapper = {
     "llama": LlamaRotaryEmbedding,

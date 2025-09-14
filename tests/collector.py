@@ -16,6 +16,9 @@ from llm_layer_collector.cache import get_shard_files
 from llm_layer_collector.helpers import load_shard_tensor
 from llm_layer_collector.load_layer import files_to_load_for_layer
 
+CACHE_FILE_Q30B_A3: str = 'data/Qwen3-30B-A3B-Thinking-2507-cache.json'
+MODEL_DIR_Q30B_A3: str = 'models/Qwen/Qwen3-30B-A3B-Thinking-2507/data'
+
 CACHE_FILE_1B: str = 'data/Llama3.2-1B-instruct-cache.json'
 MODEL_DIR_1B: str = 'models/Llama-3.2-1B-Instruct'
 
@@ -189,6 +192,37 @@ class LlmLayerCollectorTests(unittest.TestCase):
         num_tokens = 40
         current_token = 0
         collector = LlmLayerCollector(MODEL_DIR_Q2B, CACHE_FILE_Q2B)
+        input_embedder = collector.load_input_embedding()
+        head = collector.load_head()
+        norm = collector.load_norm()
+        layers = collector.load_layer_set(0, collector.config.num_hidden_layers - 1) # Ensure we load all layers....
+        state = None
+        while current_token < num_tokens:
+            state = compute_embedding(input_embedder, input_ids, collector.config, state)
+            for lyr in layers:
+                state.state = lyr(state)
+            topk = 1
+            result = compute_head(head, norm(state.state), topk)
+            self.assertEqual(result.shape, (1, topk))
+            token_list = input_ids.tolist()[0]
+            token_list.append(result[0][0].item())
+            input_ids = tensor([token_list])
+            current_token += 1
+            print(current_token)
+            print(tokenizer.decode(input_ids[0]))
+        self.assertGreater(input_ids.shape[1], original_num_tokens)
+
+    def test_stack_QwenMoe(self):
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR_Q30B_A3)
+        chat = [
+            {"role": "system", "content": "You are a friendly chatbot who always responds in the style of a pirate",},
+            {"role": "user", "content": "How many helicopters can a human eat in one sitting?"},
+        ]
+        input_ids = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True, return_tensors='pt')
+        original_num_tokens = input_ids.shape[1]
+        num_tokens = 40
+        current_token = 0
+        collector = LlmLayerCollector(MODEL_DIR_Q30B_A3, CACHE_FILE_Q30B_A3)
         input_embedder = collector.load_input_embedding()
         head = collector.load_head()
         norm = collector.load_norm()

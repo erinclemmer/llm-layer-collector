@@ -43,7 +43,7 @@ def compute_embedding(
     state.causal_mask["full_attention"] = create_causal_mask(**mask_kwargs)
 
     try:
-        if "sliding_attention" in config.layer_types:
+        if "sliding_attention" in config.layer_types or config.sliding_window is not None:
             state.causal_mask["sliding_attention"] = create_sliding_window_causal_mask(**mask_kwargs)
     except AttributeError:
         pass
