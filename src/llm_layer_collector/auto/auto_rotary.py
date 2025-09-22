@@ -10,7 +10,8 @@ from transformers.models.qwen3_moe.modeling_qwen3_moe import Qwen3MoeRotaryEmbed
 mapper = {
     "llama": LlamaRotaryEmbedding,
     "qwen3": Qwen3RotaryEmbedding,
-    "gemma3_text": Gemma3RotaryEmbedding
+    "gemma3_text": Gemma3RotaryEmbedding,
+    "qwen3_moe": Qwen3MoeRotaryEmbedding
 }
 
 def getClass(config: PretrainedConfig) -> torch.nn.Module:
