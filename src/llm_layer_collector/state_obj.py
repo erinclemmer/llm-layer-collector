@@ -16,7 +16,7 @@ class LLmComputationState:
         self.state = None
         self.position_embeddings = None
         self.position_embeddings_local = None
-        self.position_embeddings_gloabl = None
+        self.position_embeddings_global = None
         self.position_ids = None
         self.cache_position = None
         self.causal_mask = { }
