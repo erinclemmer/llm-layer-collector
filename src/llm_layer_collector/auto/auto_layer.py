@@ -37,8 +37,11 @@ class AutoDecoderLayer:
         except AttributeError:
             pass
 
-        if self.config.sliding_window is not None:
-            attention_type = "sliding_attention"
+        try:
+            if self.config.sliding_window is not None:
+                attention_type = "sliding_attention"
+        except AttributeError:
+            pass
 
         kwargs = {
             "hidden_states": state.state,
@@ -51,12 +54,12 @@ class AutoDecoderLayer:
         }
 
         if self.config.model_type == "gemma3_text":
-            kwargs["position_embeddings_local"] = state.position_embeddings_local,
+            kwargs["position_embeddings_local"] = state.position_embeddings_local
             kwargs["position_embeddings_global"] = state.position_embeddings_global
+            return self.cls(**kwargs)[0]
         else:
             kwargs["position_embeddings"] = state.position_embeddings
-
-        return self.cls(**kwargs)
+            return self.cls(**kwargs)
 
     def to_empty(self, device: Optional[str]) -> 'AutoDecoderLayer':
         self.cls = self.cls.to_empty(device=device)

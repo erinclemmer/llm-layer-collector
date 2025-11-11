@@ -1,6 +1,5 @@
 import gc
 import torch
-from time import time
 from typing import List, Dict
 
 from safetensors import safe_open
@@ -43,7 +42,6 @@ def get_shard_data(
     ) -> Dict[str, torch.Tensor]:
     prefixes = [f'{layer_prefix}{i}.' for i in range(start_layer, end_layer+1)]
     shard_data = { }
-    start_time = time()
     for file_path in files_to_load_for_layers(start_layer, end_layer, layer_prefix, layer_file_cache):
         full_path = f'{model_dir}/{file_path}'
         shard: dict = safe_open(full_path, framework='pt', device=device)
@@ -67,7 +65,6 @@ def load_layer(
     torch.set_default_device('meta')
     lyr = AutoDecoderLayer(config, idx)
     torch.set_default_device(device)
-    layer_data = { }
     lyr = lyr.to_empty(device=device)
     for key in shard_data.keys():
         if key.startswith(f'{layer_prefix}{idx}.'):

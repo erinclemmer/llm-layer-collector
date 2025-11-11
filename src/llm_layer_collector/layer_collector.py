@@ -102,7 +102,7 @@ class LlmLayerCollector:
         device = self.device if device is None else device
         weight = None
         
-        if self.lm_head_name is None or not self.lm_head_name in self.layer_files:
+        if self.lm_head_name is None or self.lm_head_name not in self.layer_files:
             weight = self.load_input_embedding(device).weight
         else:
             weight = self._load_shard_tensor(self.lm_head_name, device)
@@ -114,9 +114,7 @@ class LlmLayerCollector:
     def load_layer_set(self, start_layer: int, end_layer: int, device: Optional[str] = None) -> List[AutoDecoderLayer]:
         device = self.device if device is None else device
         layers = []
-        for i in tqdm.tqdm(range(start_layer, end_layer+1)):
-            if i % 3 != 0:
-                continue
+        for i in tqdm.tqdm(range(start_layer, end_layer+1, 3)):
             layers.extend(load_layers(min(i, end_layer), min(i+2, end_layer), self.layer_prefix, self.layer_files, self.config, self.model_dir, device, self.dtype))
         gc.collect()
         return layers
