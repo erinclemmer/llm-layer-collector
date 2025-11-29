@@ -47,11 +47,14 @@ class AutoDecoderLayer:
             "hidden_states": state.state,
             "attention_mask": state.causal_mask[attention_type],
             "position_ids": state.position_ids,
-            "past_key_values": state.past_key_values,
-            "past_key_value": state.past_key_values,
             "use_cache": self.config.use_cache,
             "cache_position": state.cache_position,
         }
+
+        if self.config.model_type == "qwen3":
+            kwargs["past_key_values"] = state.past_key_values
+        else:
+            kwargs["past_key_value"] = state.past_key_values
 
         if self.config.model_type == "gemma3_text":
             kwargs["position_embeddings_local"] = state.position_embeddings_local
