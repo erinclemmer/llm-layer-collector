@@ -50,6 +50,8 @@ class LlmLayerCollector:
         
         config = AutoConfig.from_pretrained(model_dir)
         self.config = config
+        if "_attention_implementation" not in self.config:
+            self.config._attention_implementation = "sdpa"
         self.num_layers = self.config.num_hidden_layers
         
         self.model_dir = model_dir
