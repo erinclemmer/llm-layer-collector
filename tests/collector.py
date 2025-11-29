@@ -143,7 +143,10 @@ class LlmLayerCollectorTests(unittest.TestCase):
     #     test_layers(self, model_dir, cache_file, 10)
 
     def test_exceptions(self):
-        collector = LlmLayerCollector(MODEL_DIR_Q2B, CACHE_FILE_Q2B)
+        model_id = "Qwen/Qwen3-1.7B"
+        model_dir = get_model_dir(model_id)
+        cache_file = get_cache_file(model_id)
+        collector = LlmLayerCollector(model_dir, cache_file)
 
         try:
             os.mkdir('shard_test')
@@ -161,7 +164,7 @@ class LlmLayerCollectorTests(unittest.TestCase):
 
         try:
             os.mkdir('bad_dir')
-            LlmLayerCollector('bad_dir', CACHE_FILE_Q2B)
+            LlmLayerCollector('bad_dir', cache_file)
             self.fail("Should have thrown an exception")
         except FileNotFoundError:
             pass
@@ -169,7 +172,7 @@ class LlmLayerCollectorTests(unittest.TestCase):
         os.rmdir('bad_dir')
 
         try:
-            os.remove(CACHE_FILE_Q2B)
+            os.remove(cache_file)
             collector._read_cache()
             self.fail("Should have thrown an exception")
         except FileNotFoundError:
