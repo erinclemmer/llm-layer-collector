@@ -51,7 +51,7 @@ class AutoDecoderLayer:
             "cache_position": state.cache_position,
         }
 
-        if self.config.model_type == "qwen3":
+        if self.config.model_type == "qwen3" or self.config.model_type == "qwen3_moe":
             kwargs["past_key_values"] = state.past_key_values
         else:
             kwargs["past_key_value"] = state.past_key_values
