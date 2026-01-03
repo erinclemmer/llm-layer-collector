@@ -89,11 +89,11 @@ def test_stack(tst: unittest.TestCase, model_dir: str, cache_file: str):
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     chat = [
         {"role": "system", "content": "You are a helpful assistant",},
-        {"role": "user", "content": f"What play is the following text from:\n{mcbeth}"},
+        {"role": "user", "content": f"What are molecules?"},
     ]
     input_ids = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True, return_tensors='pt')
     original_num_tokens = input_ids.shape[1]
-    num_tokens = 100
+    num_tokens = 10
     current_token = 0
     collector = LlmLayerCollector(model_dir, cache_file)
     input_embed = collector.load_input_embedding()
@@ -117,6 +117,89 @@ def test_stack(tst: unittest.TestCase, model_dir: str, cache_file: str):
         print(tokenizer.decode(input_ids[0]))
     tst.assertGreater(input_ids.shape[1], original_num_tokens)
 
+def test_chunked_prefill(tst: unittest.TestCase, model_dir: str, cache_file: str, chunk_size: int = 128):
+    """
+    Test chunked prefill processing where a long prompt is split into chunks.
+    Each chunk is processed through all layers before moving to the next chunk.
+    """
+    tokenizer = AutoTokenizer.from_pretrained(model_dir)
+    chat = [
+        {"role": "system", "content": "You are a helpful assistant",},
+        {"role": "user", "content": f"What play is the following text from:\n{mcbeth}"},
+    ]
+    all_input_ids = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True, return_tensors='pt')
+    total_tokens = all_input_ids.shape[1]
+    print(f"Total tokens: {total_tokens}, Chunk size: {chunk_size}")
+    
+    collector = LlmLayerCollector(model_dir, cache_file)
+    input_embed = collector.load_input_embedding()
+    head = collector.load_head()
+    norm = collector.load_norm()
+    layers = collector.load_layer_set(0, collector.config.num_hidden_layers - 1)
+    
+    cache = DynamicCache()
+    
+    # Calculate number of chunks
+    num_chunks = (total_tokens + chunk_size - 1) // chunk_size
+    print(f"Processing {num_chunks} chunks")
+    
+    # Process prefill in chunks
+    for chunk_idx in range(num_chunks):
+        chunk_start = chunk_idx * chunk_size
+        chunk_end = min(chunk_start + chunk_size, total_tokens)
+        chunk_tokens = all_input_ids[:, chunk_start:chunk_end]
+        
+        print(f"Chunk {chunk_idx + 1}/{num_chunks}: tokens {chunk_start}-{chunk_end} ({chunk_end - chunk_start} tokens)")
+        
+        # For chunks after the first, use chunked_prefill=True
+        is_chunked = chunk_idx > 0
+        state = compute_embedding(input_embed, chunk_tokens, collector.config, cache, chunked_prefill=is_chunked)
+        
+        # Verify cache position is correct
+        expected_start = chunk_start
+        expected_end = chunk_end
+        tst.assertEqual(state.cache_position[0].item(), expected_start)
+        tst.assertEqual(state.cache_position[-1].item(), expected_end - 1)
+        
+        # Process through all layers
+        for lyr in layers:
+            state.state = lyr(state, cache)
+        
+        # After processing, cache should have accumulated tokens
+        tst.assertEqual(cache.get_seq_length(), chunk_end)
+    
+    # After all prefill chunks, verify cache has all tokens
+    tst.assertEqual(cache.get_seq_length(), total_tokens)
+    
+    # Now generate a few tokens in decode mode
+    num_decode_tokens = 30
+    current_ids = all_input_ids
+    
+    for i in range(num_decode_tokens):
+        # Decode mode: single token, chunked_prefill=False (default)
+        state = compute_embedding(input_embed, current_ids, collector.config, cache, chunked_prefill=False)
+        
+        # In decode mode, should only process last token
+        tst.assertEqual(state.state.shape[1], 1)
+        
+        for lyr in layers:
+            state.state = lyr(state, cache)
+        
+        result = compute_head(head, norm(state.state), topk=1)
+        
+        # Append new token
+        token_list = current_ids.tolist()[0]
+        token_list.append(result[0][0].item())
+        current_ids = tensor([token_list])
+        
+        print(f"Decode token {i + 1}: cache size = {cache.get_seq_length()}")
+    
+    # Final output
+    print(f"Generated {num_decode_tokens} tokens after chunked prefill")
+    print(f"Output: {tokenizer.decode(current_ids[0][total_tokens:])}")
+    
+    tst.assertEqual(current_ids.shape[1], total_tokens + num_decode_tokens)
+
 class LlmLayerCollectorTests(unittest.TestCase):
     def test_qwen3_2B(self):
         model_id = "Qwen/Qwen3-1.7B"
@@ -129,6 +212,7 @@ class LlmLayerCollectorTests(unittest.TestCase):
         test_head(self, model_dir, cache_file, (151936, 2048))
         test_layers(self, model_dir, cache_file, 10)
         test_stack(self, model_dir, cache_file)
+        test_chunked_prefill(self, model_dir, cache_file, chunk_size=128)
 
     # def test_gemma3_1B(self):
     #     model_id = "google/gemma-3-1b-it"

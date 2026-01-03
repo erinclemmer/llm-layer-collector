@@ -13,14 +13,36 @@ def compute_embedding(
         input_embedder: torch.nn.Embedding,
         input_ids: torch.Tensor,
         config: PretrainedConfig,
-        cache: DynamicCache
+        cache: DynamicCache,
+        chunked_prefill: bool = False
     ) -> LLmComputationState:
+    """
+    Compute embeddings and prepare computation state for transformer layers.
+    
+    Args:
+        input_embedder: The embedding layer
+        input_ids: Token IDs to embed
+        config: Model configuration
+        cache: KV cache (DynamicCache)
+        chunked_prefill: If True, process all input_ids even when cache is non-empty.
+                        Use this for chunked prefill where multiple tokens are processed
+                        at once after the first chunk.
+    """
     device = input_embedder.weight.device
 
     state = LLmComputationState()
     
     past_seen_tokens = cache.get_seq_length()
-    input_seq = input_ids if past_seen_tokens == 0 else torch.tensor([[input_ids[:, -1]]])
+    
+    # Determine which tokens to embed:
+    # - First prefill (cache empty): embed all input_ids
+    # - Chunked prefill (cache non-empty, chunked_prefill=True): embed all input_ids
+    # - Decode phase (cache non-empty, chunked_prefill=False): embed only last token
+    if past_seen_tokens == 0 or chunked_prefill:
+        input_seq = input_ids
+    else:
+        input_seq = torch.tensor([[input_ids[:, -1]]])
+    
     state.state = input_embedder(input_seq)
 
     converter = AttentionMaskConverter(is_causal=True)
