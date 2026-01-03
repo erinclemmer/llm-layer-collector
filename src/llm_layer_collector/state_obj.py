@@ -1,6 +1,5 @@
 import torch
 from typing import Optional, Dict
-from transformers.cache_utils import Cache
 
 class LLmComputationState:
     state: torch.Tensor
@@ -10,7 +9,6 @@ class LLmComputationState:
     position_ids: torch.Tensor
     cache_position: torch.Tensor
     causal_mask: Dict
-    past_key_values: Cache
 
     def __init__(self):
         self.state = None
@@ -20,4 +18,3 @@ class LLmComputationState:
         self.position_ids = None
         self.cache_position = None
         self.causal_mask = { }
-        self.past_key_values = None

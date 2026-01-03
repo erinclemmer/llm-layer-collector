@@ -1,6 +1,7 @@
 from typing import Optional
 
 import torch
+from transformers.cache_utils import DynamicCache
 from transformers.modeling_layers import GradientCheckpointingLayer
 from transformers.configuration_utils import PretrainedConfig
 from transformers.models.llama.modeling_llama import LlamaDecoderLayer
@@ -29,7 +30,8 @@ class AutoDecoderLayer:
 
     def __call__(
         self, 
-        state: LLmComputationState
+        state: LLmComputationState,
+        cache: DynamicCache
     ) -> torch.Tensor:
         attention_type = "full_attention"
         try:
@@ -52,9 +54,9 @@ class AutoDecoderLayer:
         }
 
         if self.config.model_type == "qwen3" or self.config.model_type == "qwen3_moe":
-            kwargs["past_key_values"] = state.past_key_values
+            kwargs["past_key_values"] = cache
         else:
-            kwargs["past_key_value"] = state.past_key_values
+            kwargs["past_key_value"] = cache
 
         if self.config.model_type == "gemma3_text":
             kwargs["position_embeddings_local"] = state.position_embeddings_local

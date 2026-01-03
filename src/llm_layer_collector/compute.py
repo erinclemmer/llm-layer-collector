@@ -13,37 +13,39 @@ def compute_embedding(
         input_embedder: torch.nn.Embedding,
         input_ids: torch.Tensor,
         config: PretrainedConfig,
-        state: Optional[LLmComputationState] = None
+        cache: DynamicCache
     ) -> LLmComputationState:
     device = input_embedder.weight.device
-    embedded_input = input_embedder(input_ids.to(device))
-    if state is None:
-        state = LLmComputationState()
+
+    state = LLmComputationState()
     
-    state.state = embedded_input
+    past_seen_tokens = cache.get_seq_length()
+    input_seq = input_ids if past_seen_tokens == 0 else torch.tensor([[input_ids[:, -1]]])
+    state.state = input_embedder(input_seq)
 
     converter = AttentionMaskConverter(is_causal=True)
-    L = embedded_input.size()[1]
+    L = input_seq.size()[1]
+
     attention_mask = converter.to_causal_4d(
         batch_size=1,
         query_length=L,
-        key_value_length=L,
-        dtype=embedded_input.dtype,
-        device=embedded_input.device
+        key_value_length=past_seen_tokens + L,
+        dtype=state.state.dtype,
+        device=device
     )
     
     state.cache_position = torch.arange(
-        0, end=embedded_input.size(1), device=device
+        past_seen_tokens, end=past_seen_tokens + L, device=device
     )
     
     state.position_ids = state.cache_position.unsqueeze(0)
 
     mask_kwargs = {
         "config": config,
-        "input_embeds": embedded_input.detach(),
+        "input_embeds": state.state.detach(),
         "attention_mask": attention_mask,
         "cache_position": state.cache_position,
-        "past_key_values": state.past_key_values,
+        "past_key_values": cache,
         "position_ids": state.position_ids
     }
     
@@ -56,14 +58,14 @@ def compute_embedding(
         pass
 
     if config.model_type == 'gemma3_text':
-        state.position_embeddings_global = AutoRotaryEmbedding(config)(embedded_input.detach(), state.position_ids)
+        state.position_embeddings_global = AutoRotaryEmbedding(config)(state.state.detach(), state.position_ids)
         configCopy = copy.deepcopy(config)
         configCopy.rope_theta = configCopy.rope_local_base_freq
         configCopy.rope_scaling = {"rope_type": "default"}
         
-        state.position_embeddings_local = AutoRotaryEmbedding(configCopy)(embedded_input.detach(), state.position_ids)
+        state.position_embeddings_local = AutoRotaryEmbedding(configCopy)(state.state.detach(), state.position_ids)
     else:
-        state.position_embeddings = AutoRotaryEmbedding(config)(embedded_input.detach(), state.position_ids)
+        state.position_embeddings = AutoRotaryEmbedding(config)(state.state.detach(), state.position_ids)
     
     return state
 

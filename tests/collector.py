@@ -9,6 +9,7 @@ from pathlib import Path
 import torch
 from torch import tensor
 from transformers import AutoTokenizer
+from transformers.cache_utils import DynamicCache
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../src'))
 
@@ -19,6 +20,9 @@ from llm_layer_collector.helpers import load_shard_tensor
 from llm_layer_collector.load_layer import files_to_load_for_layer
 
 PROMPT = "The quick brown fox jumps over the "
+
+with open('mcbeth_3000.txt', 'r', encoding='utf-8') as f:
+    mcbeth = f.read()
 
 def clone_model(model_id: str, model_dir: str):
     repo_url = f"https://huggingface.co/{model_id}"
@@ -56,7 +60,7 @@ def test_embedding(tst: unittest.TestCase, model_dir: str, cache_file: str, stat
     input_embedder = collector.load_input_embedding()
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     input_ids = tokenizer(PROMPT, return_tensors='pt')['input_ids']
-    state = compute_embedding(input_embedder, input_ids, collector.config)
+    state = compute_embedding(input_embedder, input_ids, collector.config, DynamicCache())
     tst.assertEqual(state.state.shape, state_shape)
     tst.assertEqual(state.position_ids.shape, position_ids_shape)
     tst.assertEqual(state.position_embeddings[0].shape, position_embeddings_shape)
@@ -84,12 +88,12 @@ def test_layers(tst: unittest.TestCase, model_dir: str, cache_file: str, end_lay
 def test_stack(tst: unittest.TestCase, model_dir: str, cache_file: str):
     tokenizer = AutoTokenizer.from_pretrained(model_dir)
     chat = [
-        {"role": "system", "content": "You are a friendly chatbot who always responds in the style of a pirate",},
-        {"role": "user", "content": "How many helicopters can a human eat in one sitting?"},
+        {"role": "system", "content": "You are a helpful assistant",},
+        {"role": "user", "content": f"What play is the following text from:\n{mcbeth}"},
     ]
     input_ids = tokenizer.apply_chat_template(chat, tokenize=True, add_generation_prompt=True, return_tensors='pt')
     original_num_tokens = input_ids.shape[1]
-    num_tokens = 4
+    num_tokens = 100
     current_token = 0
     collector = LlmLayerCollector(model_dir, cache_file)
     input_embed = collector.load_input_embedding()
@@ -97,10 +101,11 @@ def test_stack(tst: unittest.TestCase, model_dir: str, cache_file: str):
     norm = collector.load_norm()
     layers = collector.load_layer_set(0, collector.config.num_hidden_layers - 1) # Ensure we load all layers....
     state = None
+    cache = DynamicCache()
     while current_token < num_tokens:
-        state = compute_embedding(input_embed, input_ids, collector.config, state)
+        state = compute_embedding(input_embed, input_ids, collector.config, cache)
         for lyr in layers:
-            state.state = lyr(state)
+            state.state = lyr(state, cache)
         topk = 1
         result = compute_head(head, norm(state.state), topk)
         tst.assertEqual(result.shape, (1, topk))
