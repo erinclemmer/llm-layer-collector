@@ -3,6 +3,7 @@ import torch
 from typing import Optional
 from transformers.configuration_utils import PretrainedConfig
 from transformers.masking_utils import create_causal_mask, create_sliding_window_causal_mask
+from transformers.modeling_attn_mask_utils import AttentionMaskConverter
 from transformers.cache_utils import DynamicCache
 
 from llm_layer_collector.auto.auto_rotary import AutoRotaryEmbedding
@@ -20,13 +21,19 @@ def compute_embedding(
         state = LLmComputationState()
     
     state.state = embedded_input
+
+    converter = AttentionMaskConverter(is_causal=True)
+    L = embedded_input.size()[1]
+    attention_mask = converter.to_causal_4d(
+        batch_size=1,
+        query_length=L,
+        key_value_length=L,
+        dtype=embedded_input.dtype,
+        device=embedded_input.device
+    )
     
-    if config.use_cache and state.past_key_values is None:
-        state.past_key_values = DynamicCache()
-    
-    past_seen_tokens = state.past_key_values.get_seq_length() if state.past_key_values is not None else 0
     state.cache_position = torch.arange(
-        past_seen_tokens, end=past_seen_tokens + embedded_input.size(1), device=device
+        0, end=embedded_input.size(1), device=device
     )
     
     state.position_ids = state.cache_position.unsqueeze(0)
@@ -34,7 +41,7 @@ def compute_embedding(
     mask_kwargs = {
         "config": config,
         "input_embeds": embedded_input.detach(),
-        "attention_mask": None,
+        "attention_mask": attention_mask,
         "cache_position": state.cache_position,
         "past_key_values": state.past_key_values,
         "position_ids": state.position_ids
