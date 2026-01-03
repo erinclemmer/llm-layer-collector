@@ -50,6 +50,7 @@ def compute_embedding(
     }
     
     state.causal_mask["full_attention"] = create_causal_mask(**mask_kwargs)
+    state.causal_mask["sliding_attention"] = None
 
     try:
         if "sliding_attention" in config.layer_types or config.sliding_window is not None:
