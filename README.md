@@ -1,3 +1,6 @@
+### Notice:
+This project is being archived, if you want to use this package please get it from [the language-pipes repository](https://github.com/erinclemmer/language-pipes)
+
 # LLM Layer Collector
 
 ![PyPI - Version](https://img.shields.io/pypi/v/llm-layer-collector)
